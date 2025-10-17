@@ -1,20 +1,23 @@
-# WebGIS Application
+# WMS Map Viewer
 
-A modern React-based WebGIS application built with Vite, MapLibre GL JS, and Material-UI.
+> ⚠️ **Disclaimer**: This project was vibecoded as part of an experiment to explore the state of AI coding agents.
+
+A modern WMS (Web Map Service) viewer built with React, MapLibre GL JS, and DuckDB for efficient map service cataloging.
 
 ## Features
 
-- 🗺️ **Interactive Map** - Built with MapLibre GL JS and @mapcomponents/react-maplibre
-- 📚 **WMS Library** - Searchable catalog of WMS services with filters by category, country, and map extent
+- 🗺️ **Interactive Map Viewer** - Built with MapLibre GL JS and @mapcomponents/react-maplibre
+- 🦆 **DuckDB-Powered WMS Database** - Efficient storage and querying of WMS service metadata using DuckDB WASM
+- 📚 **WMS Library Browser** - Searchable catalog of WMS services with filters by category, country, and map extent
 - 🌲 **Layer Tree** - Interactive layer management with:
   - Toggle visibility for services and individual layers
   - Adjust opacity with sliders
   - Zoom to service extent
   - Remove services from the map
-- 🎨 **Material-UI Design** - Beautiful, extensible UI components
+- 🎨 **Material-UI Design** - Clean, modern UI components
 - 💾 **State Management** - Centralized state using Zustand
 - 📝 **TypeScript** - Fully typed for better development experience
-- 🔄 **WMS Capabilities** - Automatic fetching and parsing of WMS GetCapabilities
+- 🔄 **WMS Capabilities** - Automatic fetching and parsing of WMS GetCapabilities documents
 
 ## Tech Stack
 
@@ -25,6 +28,7 @@ A modern React-based WebGIS application built with Vite, MapLibre GL JS, and Mat
 - **@mapcomponents/react-maplibre** - React wrapper for MapLibre
 - **@mui/material** - UI component library
 - **Zustand** - State management
+- **DuckDB WASM** - In-browser SQL database for WMS service catalog
 - **wms-capabilities** - WMS capabilities parser
 
 ## Getting Started
@@ -49,12 +53,13 @@ npm run build
 
 ## Usage
 
-### Adding WMS Services
+### Browsing the WMS Database
 
-1. Click the **floating action button** (library icon) in the bottom-left corner
-2. Browse or search the WMS library
-3. Filter by category or country
-4. Click **Add** to add a service to the map
+1. Click the **floating action button** (library icon) in the bottom-left corner to open the WMS library
+2. Browse the DuckDB-powered catalog of WMS services
+3. Use the search bar to find specific services
+4. Filter by category, country, or current map extent
+5. Click **Add** to add a WMS service to the map
 
 ### Managing Layers
 
@@ -64,10 +69,13 @@ The **Layer Tree** sidebar on the right provides:
 - **Zoom to Extent** - Focus map on service's geographic bounds
 - **Remove Service** - Delete service and all its layers from the map
 
-## Current WMS Services
+## Database
 
-- **StatCan - Multiple Deprivation** (Canada, Demographics)
-- **USGS - Shaded Relief** (USA, Topography)
+The application uses **DuckDB WASM** (`wms_unrestricted.duckdb`) to store and query WMS service metadata. This provides:
+- Fast, SQL-based querying of WMS services
+- Efficient filtering by category, country, and geographic extent
+- In-browser database with no backend required
+- Scalable storage for large WMS catalogs
 
 ## License
 
