@@ -17,7 +17,8 @@ import {
   Button,
   Divider,
   Stack,
-  Chip
+  Chip,
+  Pagination
 } from '@mui/material';
 import {
   ExpandLess,
@@ -46,6 +47,9 @@ function LayerTreeItem({ service }: LayerTreeItemProps) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [dbInfo, setDbInfo] = useState<WMSLibraryItem | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(false);
+  const [layerPage, setLayerPage] = useState(1);
+  const [infoLayerPage, setInfoLayerPage] = useState(1);
+  const layersPerPage = 10;
   const mapHook = useMap({ mapId: 'map-1' });
   const { toggleWMSService, toggleWMSLayer, removeWMSService, updateWMSOpacity } = useMapStore();
 
@@ -240,30 +244,43 @@ function LayerTreeItem({ service }: LayerTreeItemProps) {
                 Available Layers ({service.layers.length})
               </Typography>
               <List dense disablePadding sx={{ maxHeight: 200, overflowY: 'auto' }}>
-                {service.layers.map((layer) => (
-                  <ListItem key={layer.id} sx={{ px: 0, py: 0.5 }}>
-                    <ListItemText
-                      primary={
-                        <Typography variant="body2" fontWeight="medium">
-                          {layer.title}
-                        </Typography>
-                      }
-                      secondary={
-                        <>
-                          <Typography variant="caption" component="span" display="block" color="text.secondary">
-                            Name: {layer.name}
+                {service.layers
+                  .slice((infoLayerPage - 1) * layersPerPage, infoLayerPage * layersPerPage)
+                  .map((layer) => (
+                    <ListItem key={layer.id} sx={{ px: 0, py: 0.5 }}>
+                      <ListItemText
+                        primary={
+                          <Typography variant="body2" fontWeight="medium">
+                            {layer.title}
                           </Typography>
-                          {layer.abstract && (
+                        }
+                        secondary={
+                          <>
                             <Typography variant="caption" component="span" display="block" color="text.secondary">
-                              {layer.abstract}
+                              Name: {layer.name}
                             </Typography>
-                          )}
-                        </>
-                      }
-                    />
-                  </ListItem>
-                ))}
+                            {layer.abstract && (
+                              <Typography variant="caption" component="span" display="block" color="text.secondary">
+                                {layer.abstract}
+                              </Typography>
+                            )}
+                          </>
+                        }
+                      />
+                    </ListItem>
+                  ))}
               </List>
+              {service.layers.length > layersPerPage && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+                  <Pagination
+                    count={Math.ceil(service.layers.length / layersPerPage)}
+                    page={infoLayerPage}
+                    onChange={(_, page) => setInfoLayerPage(page)}
+                    size="small"
+                    color="primary"
+                  />
+                </Box>
+              )}
             </Box>
 
             <Divider />
@@ -365,42 +382,56 @@ function LayerTreeItem({ service }: LayerTreeItemProps) {
           </Box>
 
           <List dense disablePadding>
-            {service.layers.map((layer) => (
-              <ListItem key={layer.id} sx={{ py: 0.15, pl: 0, overflowX: 'hidden' }}>
-                <Checkbox
-                  edge="start"
-                  checked={layer.visible}
-                  onChange={() => toggleWMSLayer(service.id, layer.id)}
-                  size="small"
-                  sx={{ py: 0, flexShrink: 0 }}
-                />
-                <ListItemText
-                  primary={layer.title}
-                  secondary={layer.abstract}
-                  primaryTypographyProps={{ 
-                    variant: 'caption', 
-                    fontSize: '0.75rem',
-                    sx: {
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }
-                  }}
-                  secondaryTypographyProps={{
-                    variant: 'caption',
-                    sx: {
-                      fontSize: '0.65rem',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 1,
-                      WebkitBoxOrient: 'vertical'
-                    }
-                  }}
-                />
-              </ListItem>
-            ))}
+            {service.layers
+              .slice((layerPage - 1) * layersPerPage, layerPage * layersPerPage)
+              .map((layer) => (
+                <ListItem key={layer.id} sx={{ py: 0.15, pl: 0, overflowX: 'hidden' }}>
+                  <Checkbox
+                    edge="start"
+                    checked={layer.visible}
+                    onChange={() => toggleWMSLayer(service.id, layer.id)}
+                    size="small"
+                    sx={{ py: 0, flexShrink: 0 }}
+                  />
+                  <ListItemText
+                    primary={layer.title}
+                    secondary={layer.abstract}
+                    primaryTypographyProps={{ 
+                      variant: 'caption', 
+                      fontSize: '0.75rem',
+                      sx: {
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }
+                    }}
+                    secondaryTypographyProps={{
+                      variant: 'caption',
+                      sx: {
+                        fontSize: '0.65rem',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: 'vertical'
+                      }
+                    }}
+                  />
+                </ListItem>
+              ))}
           </List>
+
+          {service.layers.length > layersPerPage && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1, mb: 0.5 }}>
+              <Pagination
+                count={Math.ceil(service.layers.length / layersPerPage)}
+                page={layerPage}
+                onChange={(_, page) => setLayerPage(page)}
+                size="small"
+                color="primary"
+              />
+            </Box>
+          )}
         </Box>
       </Collapse>
     </Box>
