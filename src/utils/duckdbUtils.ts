@@ -46,7 +46,7 @@ export async function initDuckDB() {
     await conn.query(`LOAD spatial;`);
 
     // Load the database file from public folder
-    const response = await fetch('/wms_unrestricted.duckdb');
+    const response = await fetch(`${import.meta.env.BASE_URL}wms_unrestricted.duckdb`);
     const buffer = await response.arrayBuffer();
     await db.registerFileBuffer('wms_unrestricted.duckdb', new Uint8Array(buffer));
 
