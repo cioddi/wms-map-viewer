@@ -28,4 +28,5 @@ export interface WMSLibraryItem {
   country: string;
   description?: string;
   extent?: [number, number, number, number]; // [minx, miny, maxx, maxy]
+  area?: number; // Area in square degrees or projected units
 }

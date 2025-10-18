@@ -1,5 +1,6 @@
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import { useMap } from '@mapcomponents/react-maplibre';
+import { MlGeoJsonLayer } from '@mapcomponents/react-maplibre';
 import { useMapStore } from '../store/mapStore';
 import { useShallow } from 'zustand/react/shallow';
 import WMSLayers from './WMSLayers';
@@ -54,8 +55,36 @@ function MapBoundsTracker() {
 
 const MapContent = memo(() => {
   const wmsServices = useMapStore(useShallow((state) => state.wmsServices));
+  const hoveredExtent = useMapStore(useShallow((state) => state.hoveredExtent));
 
   console.log('MapContent rendering with services:', wmsServices.map(s => ({ id: s.id, title: s.title })));
+
+  // Create GeoJSON for hovered extent
+  const extentGeoJson = useMemo(() => {
+    if (!hoveredExtent) return null;
+    const [minX, minY, maxX, maxY] = hoveredExtent;
+    return {
+      type: 'FeatureCollection' as const,
+      features: [
+        {
+          type: 'Feature' as const,
+          geometry: {
+            type: 'Polygon' as const,
+            coordinates: [[
+              [minX, minY],
+              [maxX, minY],
+              [maxX, maxY],
+              [minX, maxY],
+              [minX, minY]
+            ]]
+          },
+          properties: {}
+        }
+      ]
+    };
+  }, [hoveredExtent]);
+
+
 
   return (
     <>
@@ -63,6 +92,18 @@ const MapContent = memo(() => {
       {wmsServices.map((service) => (
         <WMSLayers key={service.id} service={service} />
       ))}
+      {extentGeoJson && (
+        <MlGeoJsonLayer
+          geojson={extentGeoJson}
+          layerId="hovered-extent"
+          type="line"
+          paint={{
+            'line-color': '#ff0000',
+            'line-width': 2,
+            'line-dasharray': [2, 2]
+          }}
+        />
+      )}
     </>
   );
 });

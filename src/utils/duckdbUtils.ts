@@ -101,7 +101,7 @@ export async function queryWMSLibrary(
 
   // Get paginated data - extract bbox from geometry
   const dataQuery = `
-    SELECT 
+    SELECT
       id,
       name,
       url,
@@ -111,8 +111,9 @@ export async function queryWMSLibrary(
       ST_XMin(geom) as minx,
       ST_YMin(geom) as miny,
       ST_XMax(geom) as maxx,
-      ST_YMax(geom) as maxy
-    FROM wms.wms_resources 
+      ST_YMax(geom) as maxy,
+      area
+    FROM wms.wms_resources
     ${whereSQL}
     ORDER BY name
     LIMIT ${limit} OFFSET ${offset}
@@ -129,7 +130,8 @@ export async function queryWMSLibrary(
     category: row.category as string,
     country: row.country as string,
     description: row.description as string | undefined,
-    extent: row.minx !== null ? [row.minx as number, row.miny as number, row.maxx as number, row.maxy as number] as [number, number, number, number] : undefined
+    extent: row.minx !== null ? [row.minx as number, row.miny as number, row.maxx as number, row.maxy as number] as [number, number, number, number] : undefined,
+    area: row.area as number | undefined
   }));
 
   return { data, total };
@@ -161,14 +163,18 @@ export async function getCountries(): Promise<string[]> {
   return result.toArray().map((row) => row.country as string);
 }
 
-export async function queryWMSByBounds(bounds: [number, number, number, number]): Promise<WMSLibraryItem[]> {
+export async function queryWMSByBounds(bounds: [number, number, number, number], maxAreaMultiplier: number = 1.5): Promise<WMSLibraryItem[]> {
   const { conn } = await initDuckDB();
-  
+
   const [minX, minY, maxX, maxY] = bounds;
   const polygon = `POLYGON((${minX} ${minY}, ${maxX} ${minY}, ${maxX} ${maxY}, ${minX} ${maxY}, ${minX} ${minY}))`;
-  
+
+  // Calculate map bounds area and max allowed area
+  const mapBoundsArea = (maxX - minX) * (maxY - minY);
+  const maxArea = mapBoundsArea * maxAreaMultiplier;
+
   const result = await conn!.query(`
-    SELECT 
+    SELECT
       id,
       name,
       url,
@@ -178,10 +184,12 @@ export async function queryWMSByBounds(bounds: [number, number, number, number])
       ST_XMin(geom) as minx,
       ST_YMin(geom) as miny,
       ST_XMax(geom) as maxx,
-      ST_YMax(geom) as maxy
+      ST_YMax(geom) as maxy,
+      area
     FROM wms.wms_resources
     WHERE ST_Intersects(geom, ST_GeomFromText('${polygon}'))
-    ORDER BY name
+    AND area <= ${maxArea}
+    ORDER BY area ASC NULLS LAST, name ASC
   `);
   
   const rows = result.toArray();
@@ -193,7 +201,8 @@ export async function queryWMSByBounds(bounds: [number, number, number, number])
     category: row.category as string,
     country: row.country as string,
     description: row.description as string | undefined,
-    extent: row.minx !== null ? [row.minx as number, row.miny as number, row.maxx as number, row.maxy as number] as [number, number, number, number] : undefined
+    extent: row.minx !== null ? [row.minx as number, row.miny as number, row.maxx as number, row.maxy as number] as [number, number, number, number] : undefined,
+    area: row.area as number | undefined
   }));
   
   return data;
@@ -204,7 +213,7 @@ export async function getWMSDetailsById(id: string): Promise<WMSLibraryItem | nu
   
   const escapedId = escapeSQLString(id);
   const result = await conn!.query(`
-    SELECT 
+    SELECT
       id,
       name,
       url,
@@ -214,7 +223,8 @@ export async function getWMSDetailsById(id: string): Promise<WMSLibraryItem | nu
       ST_XMin(geom) as minx,
       ST_YMin(geom) as miny,
       ST_XMax(geom) as maxx,
-      ST_YMax(geom) as maxy
+      ST_YMax(geom) as maxy,
+      area
     FROM wms.wms_resources
     WHERE id = '${escapedId}'
   `);
@@ -232,6 +242,7 @@ export async function getWMSDetailsById(id: string): Promise<WMSLibraryItem | nu
     category: row.category as string,
     country: row.country as string,
     description: row.description as string | undefined,
-    extent: row.minx !== null ? [row.minx as number, row.miny as number, row.maxx as number, row.maxy as number] as [number, number, number, number] : undefined
+    extent: row.minx !== null ? [row.minx as number, row.miny as number, row.maxx as number, row.maxy as number] as [number, number, number, number] : undefined,
+    area: row.area as number | undefined
   };
 }

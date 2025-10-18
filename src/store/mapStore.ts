@@ -5,6 +5,7 @@ interface MapState {
   wmsServices: WMSService[];
   mapBounds: [number, number, number, number] | null; // [minx, miny, maxx, maxy]
   zoomToExtent: [number, number, number, number] | null; // Extent to zoom to
+  hoveredExtent: [number, number, number, number] | null; // Extent to highlight on hover
   addWMSService: (service: WMSService) => void;
   removeWMSService: (serviceId: string) => void;
   toggleWMSService: (serviceId: string) => void;
@@ -12,12 +13,14 @@ interface MapState {
   updateWMSOpacity: (serviceId: string, opacity: number) => void;
   setMapBounds: (bounds: [number, number, number, number]) => void;
   setZoomToExtent: (extent: [number, number, number, number] | null) => void;
+  setHoveredExtent: (extent: [number, number, number, number] | null) => void;
 }
 
 export const useMapStore = create<MapState>((set) => ({
   wmsServices: [],
   mapBounds: null,
   zoomToExtent: null,
+  hoveredExtent: null,
   
   addWMSService: (service) => 
     set((state) => {
@@ -70,8 +73,11 @@ export const useMapStore = create<MapState>((set) => ({
     })),
   
   setMapBounds: (bounds) =>
-    set({ mapBounds: bounds }),
-  
+  set({ mapBounds: bounds }),
+
   setZoomToExtent: (extent) =>
-    set({ zoomToExtent: extent })
+  set({ zoomToExtent: extent }),
+
+  setHoveredExtent: (extent) =>
+  set({ hoveredExtent: extent })
 }));

@@ -18,12 +18,14 @@ import {
   Select,
   MenuItem,
   Pagination,
-  Stack
+  Stack,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
 import { Close, Add, LibraryBooks, ZoomIn } from '@mui/icons-material';
 import { useMapStore } from '../store/mapStore';
 import { fetchWMSCapabilities, parseWMSCapabilities } from '../utils/wmsUtils';
-import { queryWMSLibrary, getCategories, getCountries } from '../utils/duckdbUtils';
+import { queryWMSLibrary, getCategories, getCountries, queryWMSByBounds } from '../utils/duckdbUtils';
 import type { WMSLibraryItem } from '../types/wms.types';
 
 interface WMSLibraryProps {
@@ -36,6 +38,7 @@ export default function WMSLibrary({ open = false, onClose, embedded = false }: 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [countryFilter, setCountryFilter] = useState<string>('all');
+  const [extentFilter, setExtentFilter] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,7 +48,7 @@ export default function WMSLibrary({ open = false, onClose, embedded = false }: 
   const [services, setServices] = useState<WMSLibraryItem[]>([]);
   const [totalServices, setTotalServices] = useState(0);
   const itemsPerPage = 5;
-  const { addWMSService, mapBounds, wmsServices, setZoomToExtent } = useMapStore();
+  const { addWMSService, mapBounds, wmsServices, setZoomToExtent, setHoveredExtent } = useMapStore();
 
   // Load categories and countries on mount
   useEffect(() => {
@@ -70,16 +73,48 @@ export default function WMSLibrary({ open = false, onClose, embedded = false }: 
     async function loadServices() {
       setDbLoading(true);
       try {
-        const offset = (currentPage - 1) * itemsPerPage;
-        const result = await queryWMSLibrary(
-          searchQuery,
-          categoryFilter,
-          countryFilter,
-          itemsPerPage,
-          offset
-        );
-        setServices(result.data);
-        setTotalServices(result.total);
+        if (extentFilter) {
+          if (!mapBounds) {
+            setError('Map bounds not available. Cannot filter by extent.');
+            setServices([]);
+            setTotalServices(0);
+            return;
+          }
+          // Query all services in bounds (filtered by area <= 1.5 * mapBoundsArea)
+          const allServices = await queryWMSByBounds(mapBounds, 1.5);
+          // Apply client-side filters
+          let filtered = allServices;
+          if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(item =>
+              item.name.toLowerCase().includes(query) ||
+              (item.description && item.description.toLowerCase().includes(query))
+            );
+          }
+          if (categoryFilter !== 'all') {
+            filtered = filtered.filter(item => item.category === categoryFilter);
+          }
+          if (countryFilter !== 'all') {
+            filtered = filtered.filter(item => item.country === countryFilter);
+          }
+          // Paginate
+          const offset = (currentPage - 1) * itemsPerPage;
+          const paginated = filtered.slice(offset, offset + itemsPerPage);
+          setServices(paginated);
+          setTotalServices(filtered.length);
+        } else {
+          // Original database-side filtering and pagination
+          const offset = (currentPage - 1) * itemsPerPage;
+          const result = await queryWMSLibrary(
+            searchQuery,
+            categoryFilter,
+            countryFilter,
+            itemsPerPage,
+            offset
+          );
+          setServices(result.data);
+          setTotalServices(result.total);
+        }
       } catch (err) {
         console.error('Failed to load services:', err);
         setError('Failed to load WMS services from database');
@@ -90,12 +125,12 @@ export default function WMSLibrary({ open = false, onClose, embedded = false }: 
       }
     }
     loadServices();
-  }, [searchQuery, categoryFilter, countryFilter, currentPage, itemsPerPage]);
+  }, [searchQuery, categoryFilter, countryFilter, extentFilter, currentPage, itemsPerPage, mapBounds]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, categoryFilter, countryFilter]);
+  }, [searchQuery, categoryFilter, countryFilter, extentFilter]);
 
   const handleAddService = async (item: WMSLibraryItem) => {
     setLoading(item.id);
@@ -225,6 +260,18 @@ export default function WMSLibrary({ open = false, onClose, embedded = false }: 
             </Select>
           </FormControl>
         </Box>
+
+        <FormControlLabel
+          control={
+            <Switch
+              checked={extentFilter}
+              onChange={(e) => setExtentFilter(e.target.checked)}
+              disabled={!mapBounds}
+            />
+          }
+          label="Filter by current map extent"
+          sx={{ mt: 1 }}
+        />
       </Box>
 
       {/* Error Alert */}
@@ -284,7 +331,12 @@ export default function WMSLibrary({ open = false, onClose, embedded = false }: 
                       </Box>
                     }
                   >
-                    <ListItemButton dense={embedded} sx={{ overflowX: 'hidden', pr: embedded ? 8 : 10 }}>
+                    <ListItemButton
+                      dense={embedded}
+                      sx={{ overflowX: 'hidden', pr: embedded ? 8 : 10 }}
+                      onMouseEnter={() => setHoveredExtent(item.extent || null)}
+                      onMouseLeave={() => setHoveredExtent(null)}
+                    >
                       <ListItemText
                         primary={item.name}
                         secondary={
